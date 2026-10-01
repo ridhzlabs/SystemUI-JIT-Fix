@@ -1,0 +1,56 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build module zip
+        id: build
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          ZIP="SystemUI_JIT_Fix-${TAG}.zip"
+          zip -r "$ZIP" module.prop service.sh action.sh banner.png README.md update.json META-INF -x '.*'
+          unzip -l "$ZIP"
+          # versionCode: vMAJOR.MINOR -> MAJOR*100 + MINOR (fallback: run number)
+          CODE=$(echo "$TAG" | sed -E 's/^v([0-9]+)\.([0-9]+).*/\1*100+\2/' | bc 2>/dev/null || echo "")
+          if [ -z "$CODE" ]; then CODE="${GITHUB_RUN_NUMBER}"; fi
+          echo "ZIP=$ZIP" >> "$GITHUB_ENV"
+          echo "CODE=$CODE" >> "$GITHUB_ENV"
+          echo "Built $ZIP (versionCode=$CODE)"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.ZIP }}
+          generate_release_notes: true
+
+      - name: Update update.json for auto-update
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          ZIP="${{ env.ZIP }}"
+          CODE="${{ env.CODE }}"
+          cat > update.json <<EOF
+          {
+            "version": "${TAG}",
+            "versionCode": ${CODE},
+            "zipUrl": "https://github.com/ridhzlabs/SystemUI-JIT-Fix/releases/download/${TAG}/${ZIP}",
+            "changelog": "https://github.com/ridhzlabs/SystemUI-JIT-Fix/releases/tag/${TAG}"
+          }
+          EOF
+          cat update.json
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add update.json
+          git commit -m "chore: update.json for ${TAG}" || echo "nothing to commit"
+          git push origin HEAD:main

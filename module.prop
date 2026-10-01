@@ -1,0 +1,8 @@
+id=systemui_jit_fix
+name=SystemUI JIT Crash Fix (RealmeUI7 malachite)
+version=v1.0
+versionCode=1
+author=ridhzlabs
+description=No more SystemUI restarts, no more lockscreen loops. Force speed-compile SystemUI on boot to dodge the ART JIT inliner crash. [by ridhzlabs]
+banner=banner.png
+updateJson=https://raw.githubusercontent.com/ridhzlabs/SystemUI-JIT-Fix/main/update.json
